@@ -3,6 +3,52 @@ Self-Driving Car Engineer Nanodegree Program
 
 ---
 
+## The Model  
+
+### State
+```
+x = position x
+y = position y
+psi = orientation angle of car
+epsi = error for psi
+v = speed
+cte = cross track error
+```
+
+### Actuators
+```
+delta = car steering angle
+a = car acceleration
+```
+
+### Update equations (kinematic model)
+```
+x_start_new       = x1 - (x0 + v0 * cos(psi0) * dt);
+y_start_new       = y1 - (y0 + v0 * sin(psi0) * dt);
+psi_start_new     = psi1 - (psi0 + v0 * delta0 / Lf * dt);
+v_start_new       = v1 - (v0 + a0 * dt);
+cte_start_new     = cte1 - ((f0 - y0) + (v0 * sin(epsi0) * dt));
+epsi_start_new    = epsi1 - ((psi0 - psides0) + v0 * delta0 / Lf * dt);
+```
+
+### Timestep Length and Frequency
+
+The course states: "N is the number of timesteps in the horizon. dt is how much time elapses between actuations. For example, if N were 20 and dt were 0.5, then T would be 10 seconds." It basically describes how often the model should be evaluated. The faster a car drives the more often this should happen, suggesting to increase N and redue the dt value. 
+I started with the values from the quiz project and started tinkering with it. Changing speed also had a big impact causing very aggressive movements of the car. In the end I aimed for a speed of 70, I ended up with `N=10` and `dt=0.15` (`T=1.5`), even moving `dt` up to 0.2 or down 0.05 will cause the car to go off track so in my solution there is not much space to play with. :) 
+Overall it seems keeping `T` low makes the movements smoother, but it needs to be compensated by appropriate values for the cost functions. 
+
+### Polynomial Fitting and MPC Preprocessing
+
+All wayppints are transformed into the vehicle system and for the polynomial fitting of the car an approximation with a 3rd order polynomial for the trajectory was used. 
+Initially I didn't have a clue about this but following some `Slack > channel: p-mpc` conversations enlightened me a bit on this. 
+
+### Model Predictive Control with Latency
+
+In my specific case lowering the hardcoded 100ms didn't cause any trouble. But when increasing it to >=200ms the car starts tumbling around and touches the the street edges from time to time. I assume in my case I have probably choosen a good combination of N and dt by accident.
+But latency can of course become an issue if the current state of the car changes too much while waiting for latency to pass. The result is that we start predict the past. :) 
+
+---
+
 ## Dependencies
 
 * cmake >= 3.5

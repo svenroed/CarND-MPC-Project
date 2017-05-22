@@ -98,33 +98,62 @@ int main() {
           * Both are in between [-1, 1].
           *
           */
-          double steer_value;
-          double throttle_value;
+          vector<double> next_x_vals;
+          vector<double> next_y_vals;
+
+          for (int i = 0; i < ptsx.size(); i++) {
+            //shift car reference angle to 90 degrees
+            // SEE CarND-MPC-Quizzes > mpc_to_line > MPC.cpp
+            double dtx = ptsx[i] - px;
+            double dty = ptsy[i] - py;
+
+            ptsx[i] = dtx * cos(psi) + dty * sin(psi);
+            ptsy[i] = dty * cos(psi) - dtx * sin(psi);
+
+            next_x_vals.push_back(ptsx[i]);
+            next_y_vals.push_back(ptsy[i]);
+          }
+
+          // Pass the x and y waypoint coordinates along the order of the polynomial.
+          // In this case, 3.
+          // SEE CarND-MPC-Quizzes > polyfit > main.cpp
+          Eigen::VectorXd ptsxvec = Eigen::VectorXd::Map(ptsx.data(), ptsx.size());
+          Eigen::VectorXd ptsyvec = Eigen::VectorXd::Map(ptsy.data(), ptsy.size());
+
+          auto coeffs = polyfit(ptsxvec, ptsyvec, 3);
+
+          // SEE CarND-MPC-Quizzes > mpc_to_line > MPC.cpp
+          double cte = polyeval(coeffs, 0);
+          double epsi = atan(coeffs[1]);
+
+          Eigen::VectorXd state(6);
+          state << 0, 0, 0, v, cte, epsi;
+
+          auto result = mpc.Solve(state, coeffs);
 
           json msgJson;
-          msgJson["steering_angle"] = steer_value;
-          msgJson["throttle"] = throttle_value;
+          msgJson["steering_angle"] = -result[0];
+          msgJson["throttle"] = result[1];
 
-          //Display the MPC predicted trajectory 
+          // Display the MPC predicted trajectory
           vector<double> mpc_x_vals;
           vector<double> mpc_y_vals;
 
-          //.. add (x,y) points to list here, points are in reference to the vehicle's coordinate system
-          // the points in the simulator are connected by a Green line
+          // Didn't get this to show up, never understood, skipping :(
+//          for (int i = 2; i < result.size(); i++) {
+//            if (i % 2 == 0) {
+//              mpc_x_vals.push_back(result[i]);
+//            } else {
+//              mpc_y_vals.push_back(result[i]);
+//            }
+//            //std::cout << result[i] << std::endl;
+//          }
 
           msgJson["mpc_x"] = mpc_x_vals;
           msgJson["mpc_y"] = mpc_y_vals;
 
-          //Display the waypoints/reference line
-          vector<double> next_x_vals;
-          vector<double> next_y_vals;
-
-          //.. add (x,y) points to list here, points are in reference to the vehicle's coordinate system
-          // the points in the simulator are connected by a Yellow line
-
           msgJson["next_x"] = next_x_vals;
           msgJson["next_y"] = next_y_vals;
-
 
           auto msg = "42[\"steer\"," + msgJson.dump() + "]";
           std::cout << msg << std::endl;
